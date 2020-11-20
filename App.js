@@ -1,11 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState }  from 'react';
+import React, { Component, useState }  from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ImageBackground, Button, Image,TextInput, TouchableOpacity} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { firebase } from './src/firebase/config'
 
@@ -14,6 +15,7 @@ const Tab = createBottomTabNavigator();
 
 
 export default function App( {navigation} ) {
+
 return (
   <NavigationContainer>
           <Tab.Navigator
@@ -29,6 +31,8 @@ return (
                   iconName = focused ? 'ios-list-box' : 'ios-list';
                 } else if (route.name === 'Login') {
                   iconName = focused ? 'ios-log-in' : 'ios-log-in';
+                } else if (route.name === 'Shop') {
+                  iconName = focused ? 'ios-shopping-cart' : 'ios-shopping-cart';
                 }
     
                 // You can return any component that you like here!
@@ -43,6 +47,7 @@ return (
             <Tab.Screen name="Home" component={Home} />
             <Tab.Screen name="Register" component={Register} />
             <Tab.Screen name="Login" component={Login} />
+            <Tab.Screen name="Shop" component={Shop} />
           </Tab.Navigator>
       </NavigationContainer>
 );
@@ -82,7 +87,7 @@ function Register ( {navigation} ){
         .then((response) => {
             const uid = response.user.uid
             console.log(uid)
-            const data = {
+            const data = {  
                 id: uid,
                 email,
                 fullName,
@@ -152,7 +157,7 @@ function Register ( {navigation} ){
   );    
 }
 
-function Login(){
+function Login({navigation}){
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -165,21 +170,14 @@ function Login(){
     .signInWithEmailAndPassword(email, password)
     .then((response) => {
         const uid = response.user.uid
-        const usersRef = firebase.firestore().collection('users')
-        usersRef
-            .doc(uid)
-            .get()
-            .then(firestoreDocument => {
-                if (!firestoreDocument.exists) {
-                    alert("User does not exist anymore.")
-                    return;
-                }
-                const user = firestoreDocument.data()
-                navigation.navigate('Home')
-            })
-            .catch(error => {
-                alert(error)
-            });
+        if(uid != null){
+          const rawValue = email;
+          console.log(rawValue)
+            storeData(rawValue)
+            console.log('Done.')
+          }
+          // Keychain.setGenericPassword('session', rawValue);
+          navigation.navigate('Home');
     })
     .catch(error => {
         alert(error)
@@ -224,12 +222,68 @@ function Login(){
   )
 }
 
-function Shop(){
+class Shop extends Component{
+  state = {
+    username: ""
+  }
 
-}
+  constructor(props){
+    super(props);
+    this.getData();
+  }
+
+  getData = async() =>{
+    try {
+      const value = await AsyncStorage.getItem('username')
+      if(value != null || value != ""){
+        this.setState({username: value})
+      }else{
+        alert("Please login first before proceed.")
+      }
+      
+    } catch(e) {
+      alert(e)
+    }
+  }
+  
+  render(){
+    return (
+      <View style={styles.container}>
+              <KeyboardAwareScrollView
+                  style={{ flex: 1, width: '100%' }}
+                  keyboardShouldPersistTaps="always">
+                  <Image
+                      style={styles.logo}
+                      source={require('./app/assets/logo.png')}
+                  />
+              <Text>Hello, {this.state.username}</Text>
+              </KeyboardAwareScrollView>
+      </View>
+    )
+  }
+};
 
 function Logout(){
 
+}
+
+const storeData = async (value) => {
+  try {
+    console.log("In func"+value)
+    await AsyncStorage.setItem('username', value)   
+  } catch (e) {
+    alert(e)
+  }
+}
+
+const getData = async () => {
+  try {
+    const value = await AsyncStorage.getItem('username')
+    console.log("get item:"+value)
+    return value.toString();
+  } catch(e) {
+    alert(e)
+  }
 }
 
 const styles = StyleSheet.create({
